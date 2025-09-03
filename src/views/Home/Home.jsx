@@ -1,23 +1,52 @@
-// src/router/AppRoutes.jsx
+// src/views/Home/Home.jsx
+
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import './Home.css'; // optional custom styles
 
-import Home from '../views/Home/Home.jsx';
-import EducatorDashboard from '../views/Educator/EducatorDashboard.jsx';
-import ParentDashboard from '../views/Parent/ParentDashboard.jsx';
-import StudentDashboard from '../views/Student/StudentDashboard.jsx';
-import NotFound from '../views/NotFound.jsx';
+const Home = () => {
+  const navigate = useNavigate();
 
-const AppRoutes = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/educator" element={<EducatorDashboard />} />
-      <Route path="/parent" element={<ParentDashboard />} />
-      <Route path="/student" element={<StudentDashboard />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <div className="home-container">
+      <header className="home-header">
+        <div className="home-logo">🎓 CurioED</div>
+        <nav className="home-nav">
+          <button onClick={() => navigate('/about')}>About</button>
+          <button onClick={() => navigate('/login')}>Login</button>
+        </nav>
+      </header>
+
+      <section className="hero">
+        <h1>✨ Welcome to CurioED</h1>
+        <p>Your Learning Adventure Begins Here.</p>
+        <div className="value-props">
+          <span>🧠 Personalized Paths</span>
+          <span>👨‍👩‍👧‍👦 Parent Engagement</span>
+          <span>🎨 Curiosity First</span>
+        </div>
+      </section>
+
+      <section className="user-buttons">
+        <button onClick={() => navigate('/student')}>🚀 I'm a Student</button>
+        <button onClick={() => navigate('/educator')}>🎓 I'm an Educator</button>
+        <button onClick={() => navigate('/parent')}>👪 I'm a Parent</button>
+      </section>
+
+      <section className="testimonial">
+        <blockquote>
+          “CurioED helps students explore their passions through play, projects, and purpose.”
+        </blockquote>
+      </section>
+
+      <footer className="home-footer">
+        <a href="#contact">Contact</a>
+        <a href="#support">Support</a>
+        <a href="#terms">Terms</a>
+      </footer>
+    </div>
   );
 };
 
-export default AppRoutes;
+export default Home;
+ 
