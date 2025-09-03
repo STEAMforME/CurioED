@@ -1,22 +1,21 @@
-
 import React from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 
-const StudentDashboard = () => {
+const ParentDashboard = () => {
   return (
     <Card className="m-4 shadow-lg bg-white">
       <CardContent>
         <Typography variant="h5" component="div">
-          Student Dashboard
+          Parent Dashboard
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Complete tasks, earn Curio Coins, and explore STEAM quests.
+          View learning schedules, track student progress, and communicate with educators.
         </Typography>
       </CardContent>
     </Card>
   );
 };
 
-export default StudentDashboard;
+export default ParentDashboard;

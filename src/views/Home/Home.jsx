@@ -1,9 +1,12 @@
+// src/router/AppRoutes.jsx
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
+
 import Home from '../views/Home/Home.jsx';
-import EducatorDashboard from '../views/Educator/EducatorDashboard';
-import ParentDashboard from '../views/Parent/ParentDashboard';
-import StudentDashboard from '../views/Student/StudentDashboard';
-import NotFound from '../views/NotFound';
+import EducatorDashboard from '../views/Educator/EducatorDashboard.jsx';
+import ParentDashboard from '../views/Parent/ParentDashboard.jsx';
+import StudentDashboard from '../views/Student/StudentDashboard.jsx';
+import NotFound from '../views/NotFound.jsx';
 
 const AppRoutes = () => {
   return (
