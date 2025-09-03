@@ -1,12 +1,11 @@
 // src/layout/Navbar.jsx
-
 import React from 'react';
 
-const Navbar = () => {
+const Navbar = ({ title }) => {
   return (
-    <header style={{ backgroundColor: '#333', color: '#fff', padding: '1rem' }}>
-      <h1 style={{ margin: 0 }}>CurioED</h1>
-    </header>
+    <div className="bg-white shadow-md py-4 px-6 text-xl font-semibold text-purple-800 sticky top-0 z-10">
+      {title}
+    </div>
   );
 };
 

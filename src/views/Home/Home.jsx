@@ -13,7 +13,7 @@ const Home = () => {
         <div className="home-logo">🎓 CurioED</div>
         <nav className="home-nav">
           <button onClick={() => navigate('/about')}>About</button>
-          <button onClick={() => navigate('/login')}>Login</button>
+    
         </nav>
       </header>
 
