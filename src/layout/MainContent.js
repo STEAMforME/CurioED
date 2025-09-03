@@ -1,9 +1,6 @@
-
-import React from 'react';
-
 const MainContent = ({ children }) => {
   return (
-    <main className="ml-64 p-4 bg-gray-100 min-h-screen">
+    <main style={{ padding: '2rem', background: '#FFF', flexGrow: 1 }}>
       {children}
     </main>
   );
