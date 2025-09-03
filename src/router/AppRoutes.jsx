@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from '../views/Home/Home';
 import EducatorDashboard from '../views/Educator/EducatorDashboard';
 import ParentDashboard from '../views/Parent/ParentDashboard';
-import StudentDashboard from '../views/Student/StudentDashboard';npm run dev
+import StudentDashboard from '../views/Student/StudentDashboard';
 import NotFound from '../views/NotFound';
 
 const AppRoutes = () => {

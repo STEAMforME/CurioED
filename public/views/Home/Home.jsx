@@ -1,4 +1,4 @@
-// src/views/Home/Home.jsx
+// public/views/Home/Home.jsx
 import { Link } from 'react-router-dom';
 
 const Home = () => {
