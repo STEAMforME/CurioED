@@ -1,11 +1,11 @@
-// src/App.jsx
+// src/App.tsx
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import AppRoutes from './router/AppRoutes';
 import Sidebar from './layout/Sidebar';
 import MainContent from './layout/MainContent';
 import './App.css';
 
-const roleFromPath = (path) => {
+const roleFromPath = (path: string) => {
   if (path.startsWith('/student')) return 'student';
   if (path.startsWith('/parent')) return 'parent';
   if (path.startsWith('/educator')) return 'educator';
