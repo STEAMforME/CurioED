@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
@@ -36,7 +36,7 @@ function AppRoutes() {
   const { role, loading } = useAuth();
 
   if (loading) {
-    return null; // ProtectedRoute handles loading state
+    return null;
   }
 
   return (
@@ -47,37 +47,37 @@ function AppRoutes() {
 
       {/* Student routes */}
       <Route
-        path="/student/*"
+        path="/student"
         element={
           <ProtectedRoute requiredRole="student">
             <StudentLayout>
-              <Routes>
-                <Route index element={<StudentDashboard />} />
-                <Route path="goals" element={<Goals />} />
-                <Route path="projects" element={<Projects />} />
-                <Route path="reflections" element={<Reflections />} />
-                <Route path="badges" element={<Badges />} />
-              </Routes>
+              <Outlet />
             </StudentLayout>
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<StudentDashboard />} />
+        <Route path="goals" element={<Goals />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="reflections" element={<Reflections />} />
+        <Route path="badges" element={<Badges />} />
+      </Route>
 
       {/* Educator routes */}
       <Route
-        path="/educator/*"
+        path="/educator"
         element={
           <ProtectedRoute requiredRole="educator">
             <EducatorLayout>
-              <Routes>
-                <Route index element={<EducatorDashboard />} />
-                <Route path="students" element={<StudentList />} />
-                <Route path="reports" element={<Reports />} />
-              </Routes>
+              <Outlet />
             </EducatorLayout>
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<EducatorDashboard />} />
+        <Route path="students" element={<StudentList />} />
+        <Route path="reports" element={<Reports />} />
+      </Route>
 
       {/* Root redirect based on role */}
       <Route
