@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Box,
@@ -26,11 +26,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 240;
 
-interface StudentLayoutProps {
-  children: ReactNode;
-}
-
-export default function StudentLayout({ children }: StudentLayoutProps) {
+export default function StudentLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -149,7 +145,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
           mt: 8,
         }}
       >
-        {children}
+        <Outlet />
       </Box>
     </Box>
   );

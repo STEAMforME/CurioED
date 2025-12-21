@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Box,
@@ -24,11 +24,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 240;
 
-interface EducatorLayoutProps {
-  children: ReactNode;
-}
-
-export default function EducatorLayout({ children }: EducatorLayoutProps) {
+export default function EducatorLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { profile, signOut } = useAuth();
   const navigate = useNavigate();
@@ -104,7 +100,7 @@ export default function EducatorLayout({ children }: EducatorLayoutProps) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            Educator Dashboard
+            Educator Portal
           </Typography>
           <Avatar>{profile?.first_name?.charAt(0)}</Avatar>
         </Toolbar>
@@ -145,7 +141,7 @@ export default function EducatorLayout({ children }: EducatorLayoutProps) {
           mt: 8,
         }}
       >
-        {children}
+        <Outlet />
       </Box>
     </Box>
   );
