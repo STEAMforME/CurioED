@@ -1,522 +1,419 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import {
-  chatWithNovaByte,
-  generateQuiz,
-  checkHealth,
-  parseQuizContent,
-  type ChatMessage,
-  type QuizQuestion,
-} from '../../lib/craftFutureClient';
+import { chatWithNovaByte, generateQuiz, type ChatResult, type QuizResult } from '../../lib/craftFutureClient';
 import {
   Box,
+  Typography,
   TextField,
   Button,
-  Typography,
+  Card,
+  CardContent,
   Paper,
   Avatar,
   CircularProgress,
   Chip,
-  Card,
-  CardContent,
   IconButton,
-  Fade,
-  Grow,
-  Alert,
   Collapse,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
+  Alert,
+  Fade,
+  Slide,
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
-import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import QuizIcon from '@mui/icons-material/Quiz';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 
-interface Message extends ChatMessage {
+interface Message {
   id: string;
+  role: 'user' | 'assistant';
+  content: string;
   timestamp: Date;
-  isThinking?: boolean;
+  sources?: Array<{ content: string; metadata?: any }>;
 }
 
-interface QuizState {
-  questions: QuizQuestion[];
-  currentQuestion: number;
-  answers: string[];
-  showResults: boolean;
-  score: number;
-}
+const STARTER_PROMPTS = [
+  '🤔 How does photosynthesis work?',
+  '🚀 What makes rockets fly?',
+  '🧠 Why is math important in real life?',
+  '🎨 How can art and science connect?',
+];
 
 export default function Assistant() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
-      id: '1',
+      id: '0',
       role: 'assistant',
       content:
-        `Hi ${profile?.first_name || 'there'}! 👋 I'm Nova Byte, your learning companion. I'm here to help you explore, question, and discover. What are you curious about today?`,
+        "Hello! I'm Nova Byte, your learning companion. I'm here to help you explore, question, and discover. What are you curious about today?",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [quizMode, setQuizMode] = useState(false);
-  const [quizState, setQuizState] = useState<QuizState | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showQuizOptions, setShowQuizOptions] = useState(false);
   const [quizTopic, setQuizTopic] = useState('');
+  const [quizGrade, setQuizGrade] = useState(6);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    checkApiHealth();
-  }, []);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const checkApiHealth = async () => {
-    const health = await checkHealth();
-    setApiStatus(health.status === 'healthy' ? 'online' : 'offline');
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const addMessage = (role: 'user' | 'assistant', content: string, isThinking = false) => {
-    const newMessage: Message = {
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async () => {
+    if (!input.trim() || loading) return;
+
+    const userMessage: Message = {
       id: Date.now().toString(),
-      role,
-      content,
+      role: 'user',
+      content: input,
       timestamp: new Date(),
-      isThinking,
     };
-    setMessages((prev) => [...prev, newMessage]);
-    return newMessage.id;
-  };
 
-  const updateMessage = (id: string, content: string, isThinking = false) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === id ? { ...msg, content, isThinking } : msg
-      )
-    );
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userMessage = input.trim();
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
-    addMessage('user', userMessage);
-    setIsLoading(true);
-
-    // Check if user wants a quiz
-    const quizKeywords = ['quiz', 'test', 'questions', 'practice'];
-    const wantsQuiz = quizKeywords.some((keyword) =>
-      userMessage.toLowerCase().includes(keyword)
-    );
-
-    if (wantsQuiz) {
-      // Extract topic from message
-      const topic = userMessage
-        .replace(/quiz|test|questions|practice|about|on/gi, '')
-        .trim();
-      if (topic) {
-        await handleQuizGeneration(topic);
-      } else {
-        addMessage(
-          'assistant',
-          'I'd love to create a quiz for you! What topic would you like to explore?'
-        );
-        setIsLoading(false);
-      }
-      return;
-    }
-
-    // Regular Socratic chat
-    const thinkingId = addMessage(
-      'assistant',
-      'Thinking about your question... 🤔',
-      true
-    );
+    setLoading(true);
+    setError(null);
 
     try {
-      const conversationHistory = messages
-        .filter((m) => !m.isThinking)
-        .map((m) => ({ role: m.role, content: m.content }));
+      const result: ChatResult = await chatWithNovaByte(input);
 
-      const response = await chatWithNovaByte(userMessage, conversationHistory);
-
-      if (response.success && response.response) {
-        updateMessage(thinkingId, response.response, false);
+      if (result.success && result.response) {
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: result.response,
+          timestamp: new Date(),
+          sources: result.sources,
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
       } else {
-        updateMessage(
-          thinkingId,
-          `I'm having trouble connecting right now. ${response.error || 'Please try again in a moment.'}`,
-          false
-        );
+        setError(result.error || 'Failed to get response from Nova Byte');
       }
-    } catch (error) {
-      updateMessage(
-        thinkingId,
-        'Something unexpected happened. Let me try again with a different approach to your question.',
-        false
-      );
+    } catch (err) {
+      setError('Connection error. Make sure CRAFTFuture API is running.');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleQuizGeneration = async (topic: string) => {
-    setQuizTopic(topic);
-    const thinkingId = addMessage(
-      'assistant',
-      `Creating a personalized quiz about ${topic}... This may take 60-90 seconds. ⏳`,
-      true
-    );
+  const handleStarterPrompt = (prompt: string) => {
+    setInput(prompt.substring(2).trim()); // Remove emoji
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!quizTopic.trim()) return;
+
+    setGeneratingQuiz(true);
+    setError(null);
 
     try {
-      const gradeLevel = profile?.grade || 8;
-      const response = await generateQuiz(topic, gradeLevel, 5);
+      const result: QuizResult = await generateQuiz(quizTopic, quizGrade, 5);
 
-      if (response.success && response.quiz_content) {
-        const questions = parseQuizContent(response.quiz_content);
-        
-        if (questions.length > 0) {
-          setQuizState({
-            questions,
-            currentQuestion: 0,
-            answers: new Array(questions.length).fill(''),
-            showResults: false,
-            score: 0,
-          });
-          setQuizMode(true);
-          updateMessage(
-            thinkingId,
-            `Great! I've created ${questions.length} questions about ${topic}. Take your time and think deeply about each one. There's no rush! 🎯`,
-            false
-          );
-        } else {
-          updateMessage(
-            thinkingId,
-            `I had trouble formatting the quiz. Here's what I generated:\n\n${response.quiz_content}`,
-            false
-          );
-        }
+      if (result.success && result.quiz_content) {
+        const quizMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `I've created a quiz about "${quizTopic}" for grade ${quizGrade}:\n\n${result.quiz_content}`,
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, quizMessage]);
+        setShowQuizOptions(false);
+        setQuizTopic('');
       } else {
-        updateMessage(
-          thinkingId,
-          `I couldn't generate a quiz right now. ${response.error || 'The AI might be warming up. Try again in a moment!'} 💡`,
-          false
-        );
+        setError(result.error || 'Failed to generate quiz');
       }
-    } catch (error) {
-      updateMessage(
-        thinkingId,
-        'Quiz generation is temporarily unavailable. Try asking me questions about the topic instead!',
-        false
-      );
+    } catch (err) {
+      setError('Quiz generation failed. This may take 60-90 seconds on first use.');
     } finally {
-      setIsLoading(false);
+      setGeneratingQuiz(false);
     }
-  };
-
-  const handleQuizAnswer = (answer: string) => {
-    if (!quizState) return;
-
-    const newAnswers = [...quizState.answers];
-    newAnswers[quizState.currentQuestion] = answer;
-
-    setQuizState({
-      ...quizState,
-      answers: newAnswers,
-    });
-  };
-
-  const handleNextQuestion = () => {
-    if (!quizState) return;
-
-    if (quizState.currentQuestion < quizState.questions.length - 1) {
-      setQuizState({
-        ...quizState,
-        currentQuestion: quizState.currentQuestion + 1,
-      });
-    } else {
-      // Calculate score
-      let score = 0;
-      quizState.questions.forEach((q, i) => {
-        if (q.correctAnswer && quizState.answers[i] === q.correctAnswer) {
-          score++;
-        }
-      });
-
-      setQuizState({
-        ...quizState,
-        showResults: true,
-        score,
-      });
-
-      // Add completion message
-      addMessage(
-        'assistant',
-        `Excellent work! You scored ${score} out of ${quizState.questions.length} on ${quizTopic}. ${score >= quizState.questions.length * 0.8 ? "You've mastered this topic! 🌟" : score >= quizState.questions.length * 0.6 ? "You're making great progress! Keep learning! 📚" : "This is a learning opportunity. Let's explore this topic more together! 💡"}`
-      );
-    }
-  };
-
-  const handleRestartQuiz = () => {
-    setQuizMode(false);
-    setQuizState(null);
-    setQuizTopic('');
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const getSocraticPrompts = () => {
-    const prompts = [
-      "What makes you curious about that?",
-      "Tell me about a topic you're learning in school",
-      "What would you like to understand better?",
-      "Is there a problem you're trying to solve?",
-      "What project are you working on?",
-    ];
-    return prompts;
   };
 
   return (
     <Box sx={{ height: 'calc(100vh - 200px)', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
-      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SmartToyIcon fontSize="large" color="primary" />
-            Nova Byte
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Your AI Learning Companion
-          </Typography>
-        </Box>
-        <Chip
-          label={apiStatus === 'online' ? 'Online' : apiStatus === 'offline' ? 'Offline' : 'Connecting...'}
-          color={apiStatus === 'online' ? 'success' : apiStatus === 'offline' ? 'error' : 'default'}
-          size="small"
-          icon={apiStatus === 'checking' ? <CircularProgress size={16} /> : undefined}
-        />
-      </Box>
+      <Fade in timeout={500}>
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+            <Avatar
+              sx={{
+                width: 56,
+                height: 56,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              }}
+            >
+              <SmartToyIcon sx={{ fontSize: 32 }} />
+            </Avatar>
+            <Box>
+              <Typography variant="h4" sx={{ fontWeight: 700 }}>
+                Nova Byte
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Your Socratic Learning Companion
+              </Typography>
+            </Box>
+          </Box>
 
-      {/* API Offline Warning */}
-      <Collapse in={apiStatus === 'offline'}>
-        <Alert severity="warning" sx={{ mb: 2 }} onClose={() => setApiStatus('checking')}>
-          Nova Byte is currently offline. Make sure the CRAFTFuture API is running on your iMac at localhost:8000
-        </Alert>
+          {/* Quick Actions */}
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {!showQuizOptions ? (
+              <Button
+                startIcon={<QuizIcon />}
+                variant="outlined"
+                size="small"
+                onClick={() => setShowQuizOptions(true)}
+                sx={{
+                  borderColor: '#EC4899',
+                  color: '#EC4899',
+                  '&:hover': { borderColor: '#EC4899', bgcolor: 'rgba(236, 72, 153, 0.05)' },
+                }}
+              >
+                Generate Quiz
+              </Button>
+            ) : (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => setShowQuizOptions(false)}
+              >
+                Cancel Quiz
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Fade>
+
+      {/* Quiz Options */}
+      <Collapse in={showQuizOptions}>
+        <Card sx={{ mb: 3, borderLeft: '4px solid #EC4899' }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              🎯 Generate Learning Quiz
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+              <TextField
+                label="Quiz Topic"
+                value={quizTopic}
+                onChange={(e) => setQuizTopic(e.target.value)}
+                placeholder="e.g., robotics basics, photosynthesis"
+                size="small"
+                sx={{ flexGrow: 1, minWidth: 200 }}
+              />
+              <TextField
+                label="Grade Level"
+                type="number"
+                value={quizGrade}
+                onChange={(e) => setQuizGrade(Number(e.target.value))}
+                inputProps={{ min: 1, max: 12 }}
+                size="small"
+                sx={{ width: 120 }}
+              />
+              <Button
+                variant="contained"
+                onClick={handleGenerateQuiz}
+                disabled={!quizTopic.trim() || generatingQuiz}
+                startIcon={generatingQuiz ? <CircularProgress size={20} /> : <QuizIcon />}
+                sx={{
+                  background: 'linear-gradient(45deg, #EC4899 30%, #6366F1 90%)',
+                }}
+              >
+                Generate
+              </Button>
+            </Box>
+            {generatingQuiz && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Generating your quiz... This may take 60-90 seconds on first use. 🧠
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
       </Collapse>
+
+      {/* Error Alert */}
+      {error && (
+        <Fade in>
+          <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        </Fade>
+      )}
 
       {/* Messages Container */}
       <Paper
-        elevation={2}
+        elevation={0}
         sx={{
-          flex: 1,
+          flexGrow: 1,
+          overflow: 'auto',
           p: 3,
-          overflowY: 'auto',
-          backgroundColor: 'background.default',
+          bgcolor: 'grey.50',
+          borderRadius: 2,
           mb: 2,
         }}
       >
         {messages.map((message, index) => (
-          <Fade in key={message.id} timeout={300}>
+          <Slide
+            key={message.id}
+            direction={message.role === 'user' ? 'left' : 'right'}
+            in
+            timeout={300 + index * 50}
+          >
             <Box
               sx={{
                 display: 'flex',
                 justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start',
-                mb: 2,
+                mb: 3,
               }}
             >
-              {message.role === 'assistant' && (
-                <Avatar sx={{ bgcolor: 'primary.main', mr: 2 }}>
-                  <SmartToyIcon />
-                </Avatar>
-              )}
-              <Paper
-                elevation={1}
+              <Box
                 sx={{
-                  p: 2,
-                  maxWidth: '70%',
-                  backgroundColor: message.role === 'user' ? 'primary.main' : 'background.paper',
-                  color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
-                  borderRadius: 2,
+                  display: 'flex',
+                  gap: 2,
+                  maxWidth: '80%',
+                  flexDirection: message.role === 'user' ? 'row-reverse' : 'row',
                 }}
               >
-                {message.isThinking ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <CircularProgress size={16} />
-                    <Typography variant="body1">{message.content}</Typography>
-                  </Box>
-                ) : (
-                  <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {message.content}
-                  </Typography>
-                )}
-                <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.7 }}>
-                  {message.timestamp.toLocaleTimeString()}
-                </Typography>
-              </Paper>
-              {message.role === 'user' && (
-                <Avatar sx={{ bgcolor: 'secondary.main', ml: 2 }}>
-                  <PersonIcon />
+                <Avatar
+                  sx={{
+                    bgcolor:
+                      message.role === 'user'
+                        ? '#6366F1'
+                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  }}
+                >
+                  {message.role === 'user' ? <PersonIcon /> : <SmartToyIcon />}
                 </Avatar>
-              )}
+                <Box>
+                  <Paper
+                    elevation={2}
+                    sx={{
+                      p: 2,
+                      bgcolor: message.role === 'user' ? '#6366F1' : 'white',
+                      color: message.role === 'user' ? 'white' : 'text.primary',
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {message.content}
+                    </Typography>
+                  </Paper>
+                  {message.sources && message.sources.length > 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {message.sources.map((source, idx) => (
+                        <Chip
+                          key={idx}
+                          label={`Source ${idx + 1}`}
+                          size="small"
+                          icon={<LightbulbIcon />}
+                          sx={{ fontSize: '0.75rem' }}
+                        />
+                      ))}
+                    </Box>
+                  )}
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    {message.timestamp.toLocaleTimeString()}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Slide>
+        ))}
+
+        {loading && (
+          <Fade in>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Avatar sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                <SmartToyIcon />
+              </Avatar>
+              <Paper elevation={2} sx={{ p: 2, bgcolor: 'white', borderRadius: 2 }}>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                  <CircularProgress size={20} />
+                  <Typography variant="body2" color="text.secondary">
+                    Nova Byte is thinking...
+                  </Typography>
+                </Box>
+              </Paper>
             </Box>
           </Fade>
-        ))}
+        )}
+
         <div ref={messagesEndRef} />
       </Paper>
 
-      {/* Quiz Interface */}
-      {quizMode && quizState && !quizState.showResults && (
-        <Grow in>
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">
-                  Question {quizState.currentQuestion + 1} of {quizState.questions.length}
-                </Typography>
-                <IconButton onClick={handleRestartQuiz} size="small">
-                  <CancelIcon />
-                </IconButton>
-              </Box>
-              
-              <Typography variant="body1" sx={{ mb: 3, fontWeight: 500 }}>
-                {quizState.questions[quizState.currentQuestion].question}
-              </Typography>
-
-              {quizState.questions[quizState.currentQuestion].options && (
-                <RadioGroup
-                  value={quizState.answers[quizState.currentQuestion]}
-                  onChange={(e) => handleQuizAnswer(e.target.value)}
-                >
-                  {quizState.questions[quizState.currentQuestion].options?.map((option, i) => (
-                    <FormControlLabel
-                      key={i}
-                      value={String.fromCharCode(65 + i)}
-                      control={<Radio />}
-                      label={option}
-                    />
-                  ))}
-                </RadioGroup>
-              )}
-
-              <Button
-                variant="contained"
-                onClick={handleNextQuestion}
-                disabled={!quizState.answers[quizState.currentQuestion]}
-                sx={{ mt: 2 }}
-              >
-                {quizState.currentQuestion < quizState.questions.length - 1 ? 'Next Question' : 'See Results'}
-              </Button>
-            </CardContent>
-          </Card>
-        </Grow>
-      )}
-
-      {/* Quiz Results */}
-      {quizMode && quizState?.showResults && (
-        <Grow in>
-          <Card sx={{ mb: 2 }}>
-            <CardContent>
-              <Typography variant="h5" gutterBottom>
-                Quiz Complete! 🎉
-              </Typography>
-              <Typography variant="h3" color="primary" gutterBottom>
-                {quizState.score} / {quizState.questions.length}
-              </Typography>
-              
-              {quizState.questions.map((q, i) => (
-                <Box key={i} sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    {quizState.answers[i] === q.correctAnswer ? (
-                      <CheckCircleIcon color="success" />
-                    ) : (
-                      <CancelIcon color="error" />
-                    )}
-                    <Typography variant="body2" fontWeight="bold">
-                      Question {i + 1}
-                    </Typography>
-                  </Box>
-                  <Typography variant="body2">{q.question}</Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Your answer: {quizState.answers[i] || 'Not answered'} | Correct: {q.correctAnswer}
-                  </Typography>
-                  {q.explanation && (
-                    <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                      💡 {q.explanation}
-                    </Typography>
-                  )}
-                </Box>
+      {/* Starter Prompts (show when no messages yet) */}
+      {messages.length === 1 && (
+        <Fade in timeout={1000}>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Try asking:
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {STARTER_PROMPTS.map((prompt, index) => (
+                <Chip
+                  key={index}
+                  label={prompt}
+                  onClick={() => handleStarterPrompt(prompt)}
+                  sx={{
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    '&:hover': { transform: 'scale(1.05)', bgcolor: 'primary.light', color: 'white' },
+                  }}
+                />
               ))}
-
-              <Button variant="contained" onClick={handleRestartQuiz} startIcon={<RefreshIcon />}>
-                Try Another Quiz
-              </Button>
-            </CardContent>
-          </Card>
-        </Grow>
-      )}
-
-      {/* Socratic Prompts */}
-      {messages.length <= 1 && (
-        <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {getSocraticPrompts().map((prompt, i) => (
-            <Chip
-              key={i}
-              label={prompt}
-              icon={<LightbulbIcon />}
-              onClick={() => {
-                setInput(prompt);
-                inputRef.current?.focus();
-              }}
-              sx={{ cursor: 'pointer' }}
-            />
-          ))}
-        </Box>
+            </Box>
+          </Box>
+        </Fade>
       )}
 
       {/* Input Area */}
-      <Paper elevation={3} sx={{ p: 2 }}>
+      <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', gap: 2 }}>
           <TextField
-            ref={inputRef}
             fullWidth
             multiline
             maxRows={4}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask me anything or request a quiz..."
-            disabled={isLoading}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder="Ask me anything about learning, science, or any topic you're curious about..."
+            disabled={loading}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              },
+            }}
           />
           <Button
             variant="contained"
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            endIcon={isLoading ? <CircularProgress size={20} /> : <SendIcon />}
-            sx={{ minWidth: 100 }}
+            onClick={handleSendMessage}
+            disabled={!input.trim() || loading}
+            sx={{
+              minWidth: 100,
+              background: 'linear-gradient(45deg, #6366F1 30%, #EC4899 90%)',
+              transition: 'transform 0.2s',
+              '&:hover': {
+                transform: 'scale(1.05)',
+              },
+            }}
           >
-            Send
+            {loading ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
           </Button>
         </Box>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-          💡 Try: "Quiz me on robotics" or "Help me understand photosynthesis"
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          Press Enter to send, Shift+Enter for new line
         </Typography>
       </Paper>
     </Box>
