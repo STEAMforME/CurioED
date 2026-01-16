@@ -19,25 +19,32 @@ export default function Login() {
   const { signIn, role } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+const handleSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  setError('');
+  setLoading(true);
 
+  try {
     const { error } = await signIn(email, password);
 
     if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
-      // Navigate based on role (will be set after login)
-      setTimeout(() => {
-        if (role) {
-          navigate(`/${role}`);
-        }
-      }, 500);
+      throw new Error(error.message);
     }
-  };
+
+    // Navigate based on role
+    setTimeout(() => {
+      if (role) {
+        navigate(`/${role}`);
+      } else {
+        setLoading(false);
+      }
+    }, 500);
+  } catch (err: any) {
+    setError(err.message || 'Failed to sign in');
+    setLoading(false);
+  }
+};
+
 
   return (
     <Container maxWidth="sm">
