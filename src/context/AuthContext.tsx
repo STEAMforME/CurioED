@@ -5,6 +5,7 @@ import {
   useState,
   ReactNode,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import { authApi } from "../lib/api/auth";
 import type { User } from "../lib/api/types";
 
@@ -20,6 +21,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(
     () => localStorage.getItem("curioed_token")
@@ -48,23 +50,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(res.accessToken);
     localStorage.setItem("curioed_token", res.accessToken);
     setUser(res.user);
+    // Navigate to dashboard after successful login
+    navigate("/dashboard");
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
     localStorage.removeItem("curioed_token");
+    navigate("/login");
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, signIn: login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        loading,
+        login,
+        signIn: login, // alias for compatibility
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }
