@@ -16,35 +16,26 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, role } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
-const handleSubmit = async (e: FormEvent) => {
-  e.preventDefault();
-  setError('');
-  setLoading(true);
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
 
-  try {
-    const { error } = await signIn(email, password);
-
-    if (error) {
-      throw new Error(error.message);
+    try {
+      await signIn(email, password);
+      // Successfully logged in - user will be updated via AuthContext
+      // Navigate to dashboard after a short delay to let state update
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 100);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in');
+      setLoading(false);
     }
-
-    // Navigate based on role
-    setTimeout(() => {
-      if (role) {
-        navigate(`/${role}`);
-      } else {
-        setLoading(false);
-      }
-    }, 500);
-  } catch (err: any) {
-    setError(err.message || 'Failed to sign in');
-    setLoading(false);
-  }
-};
-
+  };
 
   return (
     <Container maxWidth="sm">
@@ -59,7 +50,7 @@ const handleSubmit = async (e: FormEvent) => {
         <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
           <Box sx={{ mb: 3, textAlign: 'center' }}>
             <Typography variant="h4" component="h1" gutterBottom>
-              Welcome to CurioED
+              Welcome to CRAFT the Future
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Sign in to continue your learning journey
@@ -110,6 +101,18 @@ const handleSubmit = async (e: FormEvent) => {
               <Link to="/signup" style={{ color: '#1976d2', textDecoration: 'none' }}>
                 Sign up
               </Link>
+            </Typography>
+          </Box>
+          
+          <Box sx={{ mt: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+            <Typography variant="caption" component="div" gutterBottom>
+              <strong>Test Accounts (password: password123)</strong>
+            </Typography>
+            <Typography variant="caption" component="div">
+              • admin@craft.edu (Admin)<br/>
+              • instructor@craft.edu (Teacher)<br/>
+              • principal@craft.edu (Principal)<br/>
+              • learner@craft.edu (Student)
             </Typography>
           </Box>
         </Paper>
