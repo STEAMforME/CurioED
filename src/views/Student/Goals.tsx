@@ -291,10 +291,10 @@ export default function Goals() {
                       )}
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1 }}>
-                      <IconButton size="small" onClick={() => handleOpenDialog(goal)}>
+                      <IconButton size="medium" aria-label= "Edit goal"onClick={() => handleOpenDialog(goal)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" onClick={() => handleDeleteGoal(goal.id)} color="error">
+                      <IconButton size="medium" aria-label= "Delete goal"onClick={() => handleDeleteGoal(goal.id)} color="error">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
@@ -332,7 +332,7 @@ export default function Goals() {
                         Progress: {goal.progress}%
                       </Typography>
                       <IconButton
-                        size="small"
+                        size="ssize="medium" aria-label="Increase progress by 10%"
                         onClick={() => handleProgressUpdate(goal.id, Math.min(goal.progress + 10, 100))}
                       >
                         <TrendingUpIcon fontSize="small" />
@@ -378,7 +378,7 @@ export default function Goals() {
                           Completed on {new Date(goal.updated_at).toLocaleDateString()}
                         </Typography>
                       </Box>
-                      <IconButton size="small" onClick={() => handleDeleteGoal(goal.id)} color="error">
+                      <IconButton size="medium" aria-label="Delete completed goal"
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
